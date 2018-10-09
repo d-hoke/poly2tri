@@ -49,6 +49,10 @@ struct Point;
 struct Edge;
 class Triangle;
 
+// High value raises stability of triangulation
+// Very high values produce stack overflow
+constexpr unsigned int FLIP_COUNT_DEFAULT =	256;
+
 class Sweep 
 {
 public:
@@ -94,7 +98,7 @@ private:
      */
   void EdgeEvent(SweepContext& tcx, Edge* edge, Node* node);
 
-  void EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangle, Point& point);
+  void EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangle, Point& point, unsigned int flipCount = FLIP_COUNT_DEFAULT);
 
   /**
    * Creates a new front triangle and legalize it
@@ -230,7 +234,7 @@ private:
 
   void FillLeftConvexEdgeEvent(SweepContext& tcx, Edge* edge, Node& node);
 
-  void FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, Point& p);
+  void FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, Point& p, unsigned int flipCount = FLIP_COUNT_DEFAULT);
 
   /**
    * After a flip we have two triangles and know that only one will still be
@@ -272,7 +276,7 @@ private:
      * @param t
      * @param p
      */
-  void FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle& flip_triangle, Triangle& t, Point& p);
+  void FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle& flip_triangle, Triangle& t, Point& p, unsigned int flipCount = FLIP_COUNT_DEFAULT);
 
   void FinalizationPolygon(SweepContext& tcx);
 

@@ -61,7 +61,7 @@ Orientation Orient2d(Point& pa, Point& pb, Point& pc)
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
   double val = detleft - detright;
-  if (val > -EPSILON && val < EPSILON) {
+  if (val > -DBL_EPSILON && val < DBL_EPSILON) {
     return COLLINEAR;
   } else if (val > 0) {
     return CCW;
@@ -106,7 +106,7 @@ bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
 bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
 {
   double oadb = (pa.x - pb.x)*(pd.y - pb.y) - (pd.x - pb.x)*(pa.y - pb.y);
-  if (oadb >= -EPSILON) {
+  if (oadb >= EPSILON) {
     return false;
   }
 
