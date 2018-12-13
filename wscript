@@ -13,13 +13,15 @@ CPP_SOURCES = ['poly2tri/common/shapes.cc',
                'poly2tri/sweep/advancing_front.cc',
                'poly2tri/sweep/sweep_context.cc',
                'poly2tri/sweep/sweep.cc',
+#	       'poly2tri/shewchuk/predicates.cpp',
                'testbed/main.cc']
 
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['win32'] = ['g++']
 
 #Platform specific libs
-if sys.platform == 'win32':
+print sys.platform
+if (sys.platform == 'win32') or (sys.platform == 'msys') :
     # MS Windows
     sys_libs = ['glfw', 'opengl32']
 elif sys.platform == 'darwin':
@@ -36,7 +38,7 @@ def options(opt):
 def configure(conf):
   print('  calling the configuration')
   conf.load('compiler_cxx')
-  conf.env.CXXFLAGS = ['-O3', '-ffast-math']
+  conf.env.CXXFLAGS = ['-O3', '-ffast-math', '-g', '-std=c++11']
   conf.env.DEFINES_P2T = ['P2T']
   conf.env.LIB_P2T = sys_libs
 

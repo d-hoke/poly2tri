@@ -114,7 +114,9 @@ int main(int argc, char* argv[])
   }
 
   vector<p2t::Point*> polyline;
-    
+
+    double minx = 100000000., miny = 100000000.;
+	double maxx = -1000000000., maxy = -100000000.;
   if(random_distribution) {
     // Create a simple bounding box
     polyline.push_back(new Point(min,min));
@@ -123,7 +125,7 @@ int main(int argc, char* argv[])
     polyline.push_back(new Point(max,min));
   } else {
     // Load pointset from file
-
+	
     // Parse and tokenize data file
     string line;
     ifstream myfile(argv[1]);
@@ -133,6 +135,10 @@ int main(int argc, char* argv[])
         if (line.size() == 0) {
           break;
         }
+		if(line[0] == ';') {
+			cout << "skipping: " << line << endl;
+			continue;
+		}
         istringstream iss(line);
         vector<string> tokens;
         copy(istream_iterator<string>(iss), istream_iterator<string>(),
@@ -140,6 +146,14 @@ int main(int argc, char* argv[])
         double x = StringToDouble(tokens[0]);
         double y = StringToDouble(tokens[1]);
         polyline.push_back(new Point(x, y));
+		if (x > maxx)
+			  maxx = x ;
+		if (x < minx)
+			  minx = x ;
+		if (y > maxy)
+			  maxy = y;
+		if (y < miny)
+			  miny = y;
         num_points++;
       }
       myfile.close();
@@ -147,9 +161,53 @@ int main(int argc, char* argv[])
       cout << "File not opened" << endl;
     }
   }
-  
+	
+
+  cout << " min x,y " << minx << "," << miny << " max x,y " << maxx << "," << maxy << endl;
+  double midx = (maxx - minx) / 2. + minx;
+  double midy = (maxy - miny) / 2. + miny;
+  cout << "computed center midx " << midx << "," << " midy " << midy << endl;
+  if(01) //to normalize points around center or not...
+  {
+	  auto shiftx = midx; // + minx;
+	  auto shifty = midy; // + miny;
+	  //cout << "shifting by x,y " << midx << "," << midy << endl;
+	  cout << "shifting by x,y " << shiftx << "," << shifty << endl;
+	  for(auto i = 0 ; i < polyline.size() ; ++i)
+	  {
+		  polyline[i]->x -= shiftx; //midx ;
+		  polyline[i]->y -= shifty; //midy ;
+	  }
+	  cx = 0; //midx ;
+	  cy = 0; //midy ;
+  }
+  else
+  {
+	  cx = midx; // + minx; 
+	  cy = midy; // + miny;
+  }
   cout << "Number of constrained edges = " << polyline.size() << endl;
   polylines.push_back(polyline);
+
+  auto copyline = polyline;
+	std::sort(copyline.begin(), copyline.end() , [](const decltype(copyline[0]) &pa, const decltype(copyline[0]) & pb)-> bool {
+		if(pa->x == pb->x)
+			return pb->y < pa->y;
+		else
+			return pb->x < pa->x;
+	});
+  for(auto i = 0 ; i < copyline.size() ; ++i)
+  {
+	  auto & p1 = copyline[i];
+	  auto & p2 = i < copyline.size()-1 ? copyline[i+1] : copyline[0];
+	  auto distx = p1->x - p2->x;
+	  auto disty = p1->y - p2->y;
+	  auto hypsqrd = distx*distx + disty*disty;
+	  auto sqrthyp = sqrt(hypsqrd);
+	  cout.precision(17);
+	  //remember, sqrt(fraction) is a larger fraction.... (.25 * .25) == .0625 (1/4 * 1/4 == 1/16)
+	  cout << "i: " << i << " " << sqrthyp << ", " << hypsqrd << endl ;
+  }
 
   Init();
 
@@ -321,7 +379,8 @@ void Draw(const double zoom)
     Point& c = *t.GetPoint(2);
 
     // Red
-    glColor3f(1, 0, 0);
+    //glColor3f(1, 0, 0);
+    glColor3f(255, 0, 0);
 
     glBegin(GL_LINE_LOOP);
     glVertex2f(a.x, a.y);
@@ -331,7 +390,8 @@ void Draw(const double zoom)
   }
 
   // green
-  glColor3f(0, 1, 0);
+  //glColor3f(0, 1, 0);
+  glColor3f(0, 255, 0);
 
   for(int i = 0; i < polylines.size(); i++) {
     vector<Point*> poly = polylines[i];
