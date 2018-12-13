@@ -35,16 +35,27 @@
 #include "../common/utils.h"
 
 namespace p2t {
-	
-// Triangulate simple polygon with holes
+
+
+	class PointOnEdgeException : public std::runtime_error
+	{
+	public:
+		explicit PointOnEdgeException(const char *_Message)
+			: std::runtime_error(_Message)
+		{	// construct from message string
+		}
+	};
+
+	// Triangulate simple polygon with holes
 void Sweep::Triangulate(SweepContext& tcx)
 {
-  tcx.InitTriangulation();
-  tcx.CreateAdvancingFront(nodes_);
-  // Sweep points; build mesh
-  SweepPoints(tcx);
-  // Clean up
-  FinalizationPolygon(tcx);
+
+	tcx.InitTriangulation();
+	tcx.CreateAdvancingFront(nodes_);
+	// Sweep points; build mesh
+	SweepPoints(tcx);
+	// Clean up
+	FinalizationPolygon(tcx);
 }
 
 void Sweep::SweepPoints(SweepContext& tcx)
@@ -52,9 +63,12 @@ void Sweep::SweepPoints(SweepContext& tcx)
   for (int i = 1; i < tcx.point_count(); i++) {
     Point& point = *tcx.GetPoint(i);
     Node* node = &PointEvent(tcx, point);
-    for (unsigned int i = 0; i < point.edge_list.size(); i++) {
-      EdgeEvent(tcx, point.edge_list[i], node);
-    }
+	if(point.edge_list.size()) //java 'if( point.hasEdges() ) ', hasEdges() is 'edges != null'
+	{
+		for (unsigned int ui = 0; ui < point.edge_list.size(); ui++) {
+		  EdgeEvent(tcx, point.edge_list[ui], node);
+		}
+	}
   }
 }
 
@@ -90,18 +104,26 @@ Node& Sweep::PointEvent(SweepContext& tcx, Point& point)
 
 void Sweep::EdgeEvent(SweepContext& tcx, Edge* edge, Node* node)
 {
-  tcx.edge_event.constrained_edge = edge;
-  tcx.edge_event.right = (edge->p->x > edge->q->x);
+	try
+	{
+	  tcx.edge_event.constrained_edge = edge;
+	  tcx.edge_event.right = (edge->p->x > edge->q->x);
 
-  if (IsEdgeSideOfTriangle(*node->triangle, *edge->p, *edge->q)) {
-    return;
-  }
+	  if (IsEdgeSideOfTriangle(*node->triangle, *edge->p, *edge->q)) {
+		return;
+	  }
 
-  // For now we will do all needed filling
-  // TODO: integrate with flip process might give some better performance
-  //       but for now this avoid the issue with cases that needs both flips and fills
-  FillEdgeEvent(tcx, edge, node);
-  EdgeEvent(tcx, *edge->p, *edge->q, node->triangle, *edge->q);
+	  // For now we will do all needed filling
+	  // TODO: integrate with flip process might give some better performance
+	  //       but for now this avoid the issue with cases that needs both flips and fills
+	  FillEdgeEvent(tcx, edge, node);
+	  EdgeEvent(tcx, *edge->p, *edge->q, node->triangle, *edge->q);
+	}
+	catch(const PointOnEdgeException &poee)
+	{
+		//__debugbreak(); Yes, seen with 'poly2tripts_Tue.Dec.4.08.10.28-2018.dat'
+		//java - logger.warn("Skipping edge: {}", e.getMessage());
+	}
 }
 
 void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangle, Point& point)
@@ -121,7 +143,9 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       triangle = &triangle->NeighborAcross(point);
       EdgeEvent( tcx, ep, *p1, triangle, *p1 );
     } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
+      //std::runtime_error("EdgeEvent - collinear points not supported");
+	  //throw std::runtime_error("EdgeEvent - collinear points not supported");
+	  throw PointOnEdgeException("EdgeEvent - collinear points not supported");
       assert(0);
     }
     return;
@@ -138,8 +162,10 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       triangle = &triangle->NeighborAcross(point);
       EdgeEvent( tcx, ep, *p2, triangle, *p2 );
     } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
-      assert(0);
+      //std::runtime_error("EdgeEvent - collinear points not supported");
+	  //throw std::runtime_error("EdgeEvent - collinear points not supported");
+	  throw PointOnEdgeException("EdgeEvent - collinear points not supported");
+	  assert(0);
     }
     return;
   }
@@ -705,14 +731,21 @@ void Sweep::FillLeftConcaveEdgeEvent(SweepContext& tcx, Edge* edge, Node& node)
 void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, Point& p)
 {
   Triangle& ot = t->NeighborAcross(p);
-  Point& op = *ot.OppositePoint(*t, p);
+  //sort of stupid to de-ref if might be NULL... Point& op = *ot.OppositePoint(*t, p);
 
   if (&ot == NULL) {
     // If we want to integrate the fillEdgeEvent do it here
     // With current implementation we should never get here
     //throw new RuntimeException( "[BUG:FIXME] FLIP failed due to missing triangle");
+	throw std::runtime_error("[BUG:FIXME] FLIP failed due to missing triangle");
     assert(0);
   }
+  //from java comparison
+  if (t->GetConstrainedEdgeAcross(p))
+  {
+	  throw std::runtime_error("Intersecting Constraints");
+  }
+  Point& op = *ot.OppositePoint(*t, p);
 
   if (InScanArea(p, *t->PointCCW(p), *t->PointCW(p), op)) {
     // Lets rotate shared edge one vertex CW
@@ -728,6 +761,7 @@ void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, 
         Legalize(tcx, ot);
       } else {
         // XXX: I think one of the triangles should be legalized here?
+		  //__debugbreak(); //TBD: Do we reach here? Yes, with 'poly2tripts_Tue.Dec.4.08.10.28-2018.dat'
       }
     } else {
       Orientation o = Orient2d(eq, op, ep);
@@ -741,6 +775,18 @@ void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, 
   }
 }
 
+/**
+* After a flip we have two triangles and know that only one will still be
+* intersecting the edge. So decide which to contiune with and legalize the other
+*
+* @param tcx
+* @param o - should be the result of an orient2d( eq, op, ep )
+* @param t - triangle 1
+* @param ot - triangle 2
+* @param p - a point shared by both triangles
+* @param op - another point shared by both triangles
+* @return returns the triangle still intersecting the edge
+*/
 Triangle& Sweep::NextFlipTriangle(SweepContext& tcx, int o, Triangle& t, Triangle& ot, Point& p, Point& op)
 {
   if (o == CCW) {
@@ -767,33 +813,49 @@ Point& Sweep::NextFlipPoint(Point& ep, Point& eq, Triangle& ot, Point& op)
   if (o2d == CW) {
     // Right
     return *ot.PointCCW(op);
-  } 
-#if 0 //trying from Hexlord's version...
-  //well skipping this certainly avoids the assert, but also missing triangles!!!
-  else if (o2d == CCW) {
+  } else if (o2d == CCW) {
     // Left
     return *ot.PointCW(op);
-  } else{
-    //throw new RuntimeException("[Unsupported] Opposing point on constrained edge");
-    assert(0);
+  } 
+  //hexlord (I think) would return .pointCW in both 2nd/3rd cases here to avoid this failure, though
+  //think I recall that with one of my datasets it still failed... but may be unrelated to this...
+  else{
+    //throw new std::RuntimeException("[Unsupported] Opposing point on constrained edge");
+	//throw new std::exception("[Unsupported] Opposing point on constrained edge");
+	//throw std::runtime_error("[Unsupported] Opposing point on constrained edge");
+	throw PointOnEdgeException("[Unsupported] Opposing point on constrained edge");
+	assert(0);
   }
-#else
-  return *ot.PointCW(op);
-#endif
 }
 
+/**
+* Scan part of the FlipScan algorithm<br>
+* When a triangle pair isn't flippable we will scan for the next
+* point that is inside the flip triangle scan area. When found
+* we generate a new flipEdgeEvent
+*
+* @param tcx
+* @param ep - last point on the edge we are traversing
+* @param eq - first point on the edge we are traversing
+* @param flipTriangle - the current triangle sharing the point eq with edge
+* @param t
+* @param p
+*/
 void Sweep::FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle& flip_triangle,
                               Triangle& t, Point& p)
 {
   Triangle& ot = t.NeighborAcross(p);
-  Point& op = *ot.OppositePoint(t, p);
 
   if (&t.NeighborAcross(p) == NULL) {
     // If we want to integrate the fillEdgeEvent do it here
-    // With current implementation we should never get here
+    // With current implementation we should never get here - but at fi we do... (well we did make some slight mods using shewchuk stuff)
     //throw new RuntimeException( "[BUG:FIXME] FLIP failed due to missing triangle");
+	//throw new std::exception("[BUG:FIXME] FLIP failed due to missing triangle");
+	throw std::runtime_error("[BUG:FIXME] FLIP failed due to missing triangle");
     assert(0);
   }
+
+  Point& op = *ot.OppositePoint(t, p);
 
   if (InScanArea(eq, *flip_triangle.PointCCW(eq), *flip_triangle.PointCW(eq), op)) {
     // flip with new edge op->eq

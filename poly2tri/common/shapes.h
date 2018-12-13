@@ -178,6 +178,7 @@ Triangle* NeighborCW(Point& point);
 Triangle* NeighborCCW(Point& point);
 bool GetConstrainedEdgeCCW(Point& p);
 bool GetConstrainedEdgeCW(Point& p);
+bool GetConstrainedEdgeAcross(Point &p);
 void SetConstrainedEdgeCCW(Point& p, bool ce);
 void SetConstrainedEdgeCW(Point& p, bool ce);
 bool GetDelunayEdgeCCW(Point& p);

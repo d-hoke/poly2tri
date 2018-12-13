@@ -280,6 +280,20 @@ bool Triangle::GetConstrainedEdgeCW(Point& p)
   return constrained_edge[0];
 }
 
+//from java comparison
+bool Triangle::GetConstrainedEdgeAcross(Point &p)
+{
+	if (&p == points_[0])
+	{
+		return constrained_edge[0];
+	}
+	else if (&p == points_[1])
+	{
+		return constrained_edge[1];
+	}
+	return constrained_edge[2];
+}
+
 void Triangle::SetConstrainedEdgeCCW(Point& p, bool ce)
 {
   if (&p == points_[0]) {

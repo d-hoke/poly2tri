@@ -116,9 +116,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#if defined(_MSC_VER)
+#ifdef WIN32
 #include <time.h>
-#else 
+#else
 #include <sys/time.h>
 #endif
 
@@ -126,20 +126,6 @@
 #include "predicates.h"
 
 #define random() rand()
-
-	class initshewchukpredicates {
-	public:
-		initshewchukpredicates()
-		{
-			//__asm("int3");
-			exactinit();
-			printf("shewchuk predicates initialized!\n");
-		}
-	} initshewchuk ;
-
-#if defined(_MSC_VER)
-#include <float.h>
-#endif
 
 /* On some machines, the exact arithmetic routines might be defeated by the  */
 /*   use of internal extended precision floating-point registers.  Sometimes */
@@ -663,48 +649,11 @@ float uniformfloatrand()
 /*                                                                           */
 /*****************************************************************************/
 
-#if defined(__MINGW32__)
-void set_ctrlword(int v)
-//int v;
-{
-  asm("fldcw %0" :: "m" (v));
-}
-#endif
-
 void exactinit()
 {
   REAL half;
   REAL check, lastcheck;
   int every_other;
-	
-//in light of SSE usage for floating point, is none of this stuff needed???
-	#if defined(_MSC_VER) 
-	printf("init'ing MSC\n");
-#ifdef SINGLE
-_control87(_PC_24, MCW_PC);     /* set FPU control word for single precision */
-#else /* not SINGLE */
-_control87(_PC_53, MCW_PC);     /* set FPU control word for double precision */
-#endif /* not SINGLE */
-#elif	defined(__MINGW32__)
-	printf("init'ing MINGW\n");
-
-#ifdef SINGLE
-  set_ctrlword(4210);           /* set FPU control word for single precision */
-#else /* not SINGLE */
-  set_ctrlword(4722);           /* set FPU control word for double precision */
-#endif /* not SINGLE */
-
-	#elif defined(LINUX)
-#ifdef SINGLE
-  cword = 4210;                 /* set FPU control word for single precision */
-#else /* not SINGLE */
-  cword = 4722;                 /* set FPU control word for double precision */
-#endif /* not SINGLE */
-  _FPU_SETCW(cword);
-
-#else
-	#error "CODE need to init exact precision!!!"
-	#endif
 
   every_other = 1;
   half = 0.5;

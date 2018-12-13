@@ -85,6 +85,8 @@ template <class C> void FreeClear( C & cntr ) {
     cntr.clear();
 }
 
+//bool showorigshapeonly = true;
+bool showorigshapeonly = false;
 int main(int argc, char* argv[])
 {
 
@@ -164,6 +166,13 @@ int main(int argc, char* argv[])
 	
 
   cout << " min x,y " << minx << "," << miny << " max x,y " << maxx << "," << maxy << endl;
+  double xrange = maxx - minx;
+  double yrange = maxy - miny;
+  double rangetouse;
+  if (xrange > yrange)
+	  rangetouse = xrange;
+  else
+	  rangetouse = yrange;
   double midx = (maxx - minx) / 2. + minx;
   double midy = (maxy - miny) / 2. + miny;
   cout << "computed center midx " << midx << "," << " midy " << midy << endl;
@@ -173,13 +182,23 @@ int main(int argc, char* argv[])
 	  auto shifty = midy; // + miny;
 	  //cout << "shifting by x,y " << midx << "," << midy << endl;
 	  cout << "shifting by x,y " << shiftx << "," << shifty << endl;
+	  const double incrby = 100; // 5; //4; //3; // 2;
 	  for(auto i = 0 ; i < polyline.size() ; ++i)
 	  {
 		  polyline[i]->x -= shiftx; //midx ;
 		  polyline[i]->y -= shifty; //midy ;
+		  polyline[i]->x *= incrby;
+		  polyline[i]->y *= incrby;
 	  }
 	  cx = 0; //midx ;
 	  cy = 0; //midy ;
+
+	  maxx *= incrby;
+	  minx *= incrby;
+	  maxy *= incrby;
+	  miny *= incrby;
+
+	  //zoom /= incrby;
   }
   else
   {
@@ -253,15 +272,19 @@ int main(int argc, char* argv[])
   /*
    * STEP 3: Triangulate!
    */
-  cdt->Triangulate();
+  if(!showorigshapeonly)
+	cdt->Triangulate();
 
   double dt = glfwGetTime() - init_time;
 
+  if(!showorigshapeonly)
+  {
   triangles = cdt->GetTriangles();
   map = cdt->GetMap();
 
   cout << "Number of points = " << num_points << endl;
   cout << "Number of triangles = " << triangles.size() << endl;
+  }
   cout << "Elapsed time (ms) = " << dt*1000.0 << endl;
 
   MainLoop(zoom);
@@ -372,6 +395,8 @@ void Draw(const double zoom)
 
   ResetZoom(zoom, center.x, center.y, 800, 600);
 
+  if(!showorigshapeonly)
+  {
   for (int i = 0; i < triangles.size(); i++) {
     Triangle& t = *triangles[i];
     Point& a = *t.GetPoint(0);
@@ -387,6 +412,7 @@ void Draw(const double zoom)
     glVertex2f(b.x, b.y);
     glVertex2f(c.x, c.y);
     glEnd();
+  }
   }
 
   // green
