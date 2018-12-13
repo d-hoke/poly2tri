@@ -38,11 +38,17 @@
 #include <exception>
 #include <math.h>
 
+#include "../shewchuk/predicates.h"
+
 namespace p2t {
+	
+	//extern "C" double orient2d(double *pa, double*pb, double *pc);
+	//double orient2d(double *pa, double*pb, double *pc);
 
 const double PI_3div4 = 3 * M_PI / 4;
 const double PI_div2 = 1.57079632679489661923;
-const double EPSILON = 1e-12;
+const double EPSILON = 1e-12; //code orig. value
+//const double EPSILON = 1e-5; // 1e-12;
 
 enum Orientation { CW, CCW, COLLINEAR };
 
@@ -58,6 +64,16 @@ enum Orientation { CW, CCW, COLLINEAR };
  */
 Orientation Orient2d(Point& pa, Point& pb, Point& pc)
 {
+#if 01
+  double a[2] = {pa.x, pa.y}, b[2] = {pb.x, pb.y}, c[2] = {pc.x,pc.y};
+  auto res = orient2d(a, b, c);
+  if(res > 0.)
+		return CCW;
+	else if(res < 0.)
+		return CW;
+	else
+		return COLLINEAR;
+#else
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
   double val = detleft - detright;
@@ -67,9 +83,11 @@ Orientation Orient2d(Point& pa, Point& pb, Point& pc)
     return CCW;
   }
   return CW;
+#endif
 }
 
-/*
+#if 0
+/**/
 bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
 {
   double pdx = pd.x;
@@ -101,21 +119,64 @@ bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
   return true;
 }
 
-*/
+/**/
+#elif 0
+	//version closer to, presumably, older java version...
+bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
+{
+  double pdx = pd.x;
+  double pdy = pd.y;
+  double adx = pa.x - pdx;
+  double ady = pa.y - pdy;
+  double bdx = pb.x - pdx;
+  double bdy = pb.y - pdy;
+
+  double adxbdy = adx * bdy;
+  double bdxady = bdx * ady;
+  double oabd = adxbdy - bdxady;
+
+  //if (oabd <= EPSILON) {
+  oabd = orient2d(pa, pb, pd);
+  if(oabd <= 0) {
+    return false;
+  }
+
+  double cdx = pc.x - pdx;
+  double cdy = pc.y - pdy;
+
+  double cdxady = cdx * ady;
+  double adxcdy = adx * cdy;
+  double ocad = cdxady - adxcdy;
+
+  ocad = orient2d(pc, pa, pd);
+  //if (ocad <= EPSILON) {
+  if(ocad <= 0) {
+    return false;
+  }
+
+  return true;
+}
+#else
 
 bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
 {
   double oadb = (pa.x - pb.x)*(pd.y - pb.y) - (pd.x - pb.x)*(pa.y - pb.y);
-  if (oadb >= -EPSILON) {
-    return false;
+  //if (oadb >= -EPSILON) { //hexlord 'agreed' this is wrong...
+  if (oadb >= EPSILON) { //and this (hexlord approach) avoids seg violation that happens with orig prev...
+  //if (oadb <= EPSILON) { //
+  //if(fabs(oadb) < EPSILON) { //my own take... also fails...
+  //if(fabs(oadb) > EPSILON) { //my own take... also fails...
+	  return false;
   }
 
   double oadc = (pa.x - pc.x)*(pd.y - pc.y) - (pd.x - pc.x)*(pa.y - pc.y);
   if (oadc <= EPSILON) {
+  //if (fabs(oadc) < EPSILON) {
     return false;
   }
   return true;
 }
+#endif
 
 }
 

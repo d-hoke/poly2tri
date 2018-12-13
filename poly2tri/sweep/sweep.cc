@@ -35,7 +35,7 @@
 #include "../common/utils.h"
 
 namespace p2t {
-
+	
 // Triangulate simple polygon with holes
 void Sweep::Triangulate(SweepContext& tcx)
 {
@@ -392,6 +392,10 @@ bool Sweep::Legalize(SweepContext& tcx, Triangle& t)
 
 bool Sweep::Incircle(Point& pa, Point& pb, Point& pc, Point& pd)
 {
+#if 01
+	double a[2] = { pa.x, pa.y }, b[2] = { pb.x, pb.y }, c[2] = { pc.x,pc.y }, d[2] = { pd.x, pd.y };
+	return incircle(a, b, c, d) > 0.;
+#else
   double adx = pa.x - pd.x;
   double ady = pa.y - pd.y;
   double bdx = pb.x - pd.x;
@@ -424,6 +428,7 @@ bool Sweep::Incircle(Point& pa, Point& pb, Point& pc, Point& pd)
   double det = alift * (bdxcdy - cdxbdy) + blift * ocad + clift * oabd;
 
   return det > 0;
+#endif
 }
 
 void Sweep::RotateTrianglePair(Triangle& t, Point& p, Triangle& ot, Point& op)
@@ -762,13 +767,19 @@ Point& Sweep::NextFlipPoint(Point& ep, Point& eq, Triangle& ot, Point& op)
   if (o2d == CW) {
     // Right
     return *ot.PointCCW(op);
-  } else if (o2d == CCW) {
+  } 
+#if 0 //trying from Hexlord's version...
+  //well skipping this certainly avoids the assert, but also missing triangles!!!
+  else if (o2d == CCW) {
     // Left
     return *ot.PointCW(op);
   } else{
     //throw new RuntimeException("[Unsupported] Opposing point on constrained edge");
     assert(0);
   }
+#else
+  return *ot.PointCW(op);
+#endif
 }
 
 void Sweep::FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle& flip_triangle,
